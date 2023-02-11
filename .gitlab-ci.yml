@@ -1,0 +1,67 @@
+stages: 
+  #- test
+  - deploy
+  #- build
+
+
+deploy-dev: 
+  before_script:
+    - "apk add --no-cache openssh"
+    - "mkdir -p ~/.ssh"
+    - "eval \"$(ssh-agent -s)\""
+    - "echo \"$SSH_PRIVATE_KEY\" | tr -d '\\r' | ssh-add -"
+    - "chmod 700 ~/.ssh"
+    - ssh-keyscan -H "$client" >> ~/.ssh/known_hosts
+  image: alpine
+  only: 
+    - hamzadev
+  script: 
+    - pwd
+    - ssh -o StrictHostKeyChecking=no root@"$client" 
+    - ssh -o StrictHostKeyChecking=no root@"$client" set -f
+    - ssh -o StrictHostKeyChecking=no root@"$client" sudo mkdir /home/ubuntu/backup
+    - ssh -o StrictHostKeyChecking=no root@"$client" sudo cp -r /home/ubuntu/backend/app/uploadCards /home/ubuntu/backup/uploadCards 
+    - ssh -o StrictHostKeyChecking=no root@"$client" sudo cp -r /home/ubuntu/backend/app/uploadedImages /home/ubuntu/backup/uploadedImages 
+    - ssh -o StrictHostKeyChecking=no root@"$client" sudo rm -rf /home/ubuntu/backend
+    - ssh -o StrictHostKeyChecking=no root@"$client" "cd /home/ubuntu && sudo git clone https://gitlab+deploy-token-1520116:MU7NmyMgyTXg5v5xZg8p@gitlab.com/Codistan/rezzlist/backend.git"
+    - ssh -o StrictHostKeyChecking=no root@"$client" "cd /home/ubuntu/backend && sudo git checkout hamzadev"
+    - ssh -o StrictHostKeyChecking=no root@"$client" echo "Running npm install"
+    - ssh -o StrictHostKeyChecking=no root@"$client" sudo chmod -R 777 /home/ubuntu/backend
+    - ssh -o StrictHostKeyChecking=no root@"$client" sudo cp -r /home/ubuntu/backup/uploadCards /home/ubuntu/backend/app/ 
+    - ssh -o StrictHostKeyChecking=no root@"$client" sudo cp -r /home/ubuntu/backup/uploadedImages /home/ubuntu/backend/app/
+    - ssh -o StrictHostKeyChecking=no root@"$client" sudo rm -r /home/ubuntu/backup
+    - ssh -o StrictHostKeyChecking=no root@"$client" "cd /home/ubuntu/backend && pwd && npm install"
+    - ssh -o StrictHostKeyChecking=no root@"$client" "cd /home/ubuntu/backend && sudo echo $'
+      PORT = 4000 \n
+      SESSION_SECRET = yoursecret \n
+      API_URL= "http://104.248.53.128:4000" \n
+      DB_HOST="localhost" \n
+      DB_PORT=3306 \n
+      DB_DATABASE="rezzlist" \n
+      DB_USERNAME="root" \n
+      DB_PASSWORD="Rezzlist@123" \n
+      ACCESS_TOKEN_EXPIRY=2h \n
+      JWT_TOKEN_KEY="myAdminJWT8732yeuhwkdnadkj" \n
+      JWT_REFRESH_TOKEN_KEY="myrefreshtokenkeyquweyiuqwey" \n
+      BCRYPT_SALT = 5 \n
+      REMOTE_DATABASE="Rezzlist@123" \n
+      TWILIO_ACCOUNT_SID="AC648ac60555e6c794fdbc91420d32d66b" \n
+      TWILIO_AUTH_TOKEN="2e3d124577c66e3f46a3868817eb7c8c" \n
+      TWILIO_NUMBER="+12058131519" \n
+      STATUS_AVAILABLE="available" \n
+      STATUS_SOLD="sold" \n
+      STATUS_DELETE="delete" \n
+      STATUS_DELETED="deleted" \n
+      STATUS_BOUGHT="bought" \n
+      CLIENT_STRIPE_SECRET_KEY="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" \n
+      CLIENT_STRIPE_PUBLISH_KEY="pk_live_51LQwCcFot0UxiFWeOZEgWdKgmabUCeSVA7D44afhQERtZqxaVPYtsWUELE2cs8JteoqGhKhKnwWcFbo1pO58CwmR00KbpgrKTo" \n
+
+
+      FRONTEND_HOST="http://3.88.217.129:3000" \n
+      PAYMENT_STATUS_INCOMPLETE="incomplete" \n
+      PAYMENT_STATUS_COMPLETE="complete" \n
+      SALT_FOR_ACCOUNT="saltforaccount" \n' > .env"
+      
+    - ssh -o StrictHostKeyChecking=no root@"$client" "cd /home/ubuntu/backend &&  pm2 restart Server ||  pm2 start index.js --name=Server"
+    
+  stage: deploy
